@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: taskmaster
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: postgres
+  clusterIP: None # For StatefulSet headless service, if you want DNS per pod
+---
+apiVersion: v1 # A regular ClusterIP service for the app to connect
+kind: Service
+metadata:
+  name: postgres-svc # Different name to avoid conflict if headless is also used
+  namespace: taskmaster
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+  type: ClusterIP

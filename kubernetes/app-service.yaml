@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: taskmaster-app-svc
+  namespace: taskmaster
+spec:
+  type: LoadBalancer # Minikube will make it accessible via `minikube service taskmaster-app-svc -n taskmaster`
+  ports:
+    - port: 80 # External port
+      targetPort: 8080 # Container port
+      protocol: TCP
+  selector:
+    app: taskmaster-app

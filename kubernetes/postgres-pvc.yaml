@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: taskmaster
+spec:
+  accessModes:
+    - ReadWriteOnce # Suitable for a single DB pod
+  resources:
+    requests:
+      storage: 1Gi # Adjust as needed
+  # storageClassName: standard # Or your specific storage class

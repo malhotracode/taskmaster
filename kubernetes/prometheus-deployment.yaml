@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: taskmaster
+  labels:
+    app: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:latest
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+            - "--web.console.templates=/usr/share/prometheus/consoles"
+            - "--web.enable-lifecycle" # For config reload
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: prometheus-config-volume
+              mountPath: /etc/prometheus/
+          # - name: prometheus-storage-volume # Mount a PVC here for persistence
+          #   mountPath: /prometheus/
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "1"
+      volumes:
+        - name: prometheus-config-volume
+          configMap:
+            name: prometheus-config
+            items:
+              - key: prometheus.yml # This key must match the filename in the ConfigMap data
+                path: prometheus.yml
+      # - name: prometheus-storage-volume
+      #   persistentVolumeClaim:
+      #     claimName: prometheus-pvc # Define this PVC if you want persistence
+      # serviceAccountName: prometheus # If RBAC is needed for service discovery

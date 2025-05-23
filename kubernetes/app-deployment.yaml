@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskmaster-app
+  namespace: taskmaster
+  labels:
+    app: taskmaster-app
+spec:
+  replicas: 2 # Example: 2 replicas
+  selector:
+    matchLabels:
+      app: taskmaster-app
+  template:
+    metadata:
+      labels:
+        app: taskmaster-app
+      annotations:
+        prometheus.io/scrape: "true" # Tell Prometheus to scrape this
+        prometheus.io/port: "8080" # If app exposes /metrics on 8080 (not needed if using OTel Collector primarily)
+        # If using OTel collector, it will scrape this. If app exposes Prometheus metrics directly, ensure path is correct.
+    spec:
+      containers:
+        - name: taskmaster-app
+          image: your-dockerhub-username/taskmaster-go:latest # REPLACE with your image
+          imagePullPolicy: Always # Or IfNotPresent
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef: # For DB_USER, DB_PASSWORD
+                name: postgres-secret # Assuming DB_USER and DB_PASSWORD are in this secret
+          env: # Individual env vars can also be set
+            - name: DB_USER # Make sure this key matches what's in postgres-secret
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+          livenessProbe:
+            httpGet:
+              path: /tasks # A lightweight endpoint, or create a dedicated /healthz
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /tasks # Or /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"

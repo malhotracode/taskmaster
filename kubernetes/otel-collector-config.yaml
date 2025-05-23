@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: taskmaster
+data:
+  otel-collector-config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc: # Port 4317
+          http: # Port 4318
+
+    processors:
+      batch:
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 200
+        spike_limit_mib: 50
+
+    exporters:
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+        namespace: taskmaster_go_app
+      # jaeger:
+      #   endpoint: "jaeger-collector.observability.svc.cluster.local:14250"
+      #   tls:
+      #     insecure: true
+      logging:
+        loglevel: debug
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [logging]
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [prometheus, logging]

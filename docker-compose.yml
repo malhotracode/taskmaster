@@ -1,0 +1,96 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: ./go-app
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080" # Host:Container
+    environment:
+      - PORT=8080
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=taskuser
+      - DB_PASSWORD=taskpassword
+      - DB_NAME=taskdb
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317 # For OTel Collector
+      - APP_ENV=development
+    depends_on:
+      - postgres
+      - otel-collector
+    networks:
+      - taskmaster-net
+
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=taskuser
+      - POSTGRES_PASSWORD=taskpassword
+      - POSTGRES_DB=taskdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - taskmaster-net
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest # Use contrib for more exporters/processors
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./kubernetes/otel-collector-config.yaml:/etc/otel-collector-config.yaml # Reuse K8s config
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+      - "14250:14250" # Jaeger gRPC (if sending traces to Jaeger)
+      - "55680:55680" # ZPages (for collector diagnostics)
+      - "8888:8888" # Prometheus metrics from collector
+    networks:
+      - taskmaster-net
+    depends_on:
+      - prometheus # Ensure prometheus is up to be scraped by otel-collector (if configured)
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./kubernetes/prometheus-config.yaml:/etc/prometheus/prometheus.yml # Reuse K8s config
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle" # To allow config reload via HTTP POST
+    ports:
+      - "9090:9090"
+    networks:
+      - taskmaster-net
+    # For local testing, you might not need persistent storage for prometheus or can map a local dir
+    # volumes:
+    #   - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      # You can preconfigure datasources and dashboards via provisioning
+      # - GF_DATASOURCES_PATH=/etc/grafana/provisioning/datasources
+      # - GF_DASHBOARDS_PATH=/etc/grafana/provisioning/dashboards
+    # volumes:
+    #   - grafana_data:/var/lib/grafana
+    #   - ./kubernetes/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+    networks:
+      - taskmaster-net
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres_data:
+  # prometheus_data:
+  # grafana_data:
+
+networks:
+  taskmaster-net:

@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: taskmaster
+  labels:
+    app: otel-collector
+spec:
+  ports:
+    - name: otlp-grpc # For Go app to send OTLP data
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+    - name: prom-export # For Prometheus to scrape metrics FROM the collector
+      port: 8889
+      targetPort: 8889
+      protocol: TCP
+  selector:
+    app: otel-collector
+  type: ClusterIP # Internal service

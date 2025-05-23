@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: taskmaster
+data:
+  PORT: "8080"
+  DB_HOST: "postgres-svc.taskmaster.svc.cluster.local" # K8s DNS for the service
+  DB_PORT: "5432"
+  DB_NAME: "taskdb" # Should match secret, but can be here for non-sensitive name
+  OTEL_EXPORTER_OTLP_ENDPOINT: "otel-collector.taskmaster.svc.cluster.local:4317"
+  APP_ENV: "production" # Or development, staging
